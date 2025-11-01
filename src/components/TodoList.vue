@@ -1,81 +1,25 @@
 <script setup>
-import {ref, reactive, computed, onMounted} from 'vue'
-import { fetchTodos,addTodo,toggleTodo,deleteTodo } from '@/api/todos';
+import { ref, onMounted } from 'vue';
+import { useTodoStore } from '@/stores/todos';
 
-const todos = reactive([])
-const newTodoText = ref('')
-const loading = ref(false)
-const error = ref(null)
+const store = useTodoStore()
+
+// const {todos, loading, error, completedCount, loadTodos, addNewTodo, toggle, remove} = store
+
+const {todos, loading, error, completedCount, loadTodos, addNewTodo, toggle, remove} = store
+
+
+const newTodoText  = ref('')
+const addTodo = async()=>{
+    const success = await addNewTodo(newTodoText.value)
+    if(success){
+        newTodoText.value = ''
+    }
+}
 
 onMounted(()=>{
+    console.log('Loading Todos')
     loadTodos()
-})
-
-const loadTodos = async ()=>{
-    loading.value = true
-    error.value = null
-
-    try{
-        const data = await fetchTodos()
-        todos.length = 0
-        // We want to get like only 10 todos from the api
-        data.slice(0,10).forEach(todo => todos.push(todo)) //slice makes a copy of the original array.
-    }
-    catch (err){
-        err.value = err.message
-    }finally{
-        loading.value = false
-    }
-}
-
-const addTodos = async ()=>{
-    if(!newTodoText.value.trim()){
-        return
-    }
-    loading.value = true
-    try{
-        const newTodo = await addTodo(newTodoText.value)
-        todos.unshift(newTodo)
-        newTodoText.value = ''
-
-    }catch(err){
-        error.value = 'Failed to Add Todo'
-    }finally{
-        loading.value = false
-    }
-}
-
-const toggle = async (id, completed) =>{
-    const todo = todos.find(todo => todo.id === id)
-    if(!todo){
-        return
-    }
-    const old = todo.completed 
-    todo.completed = completed
-
-    try{
-        await toggleTodo(id, completed)
-    }catch{
-        todo.completed = old //Revert
-        error.value = 'Failed to Update'
-    }
-}
-
-const remove = async (id)=>{
-    const index = todos.findIndex(todo => todo.id === id)
-    if(index === -1){
-        return
-    }
-    todos.splice(index,1)
-
-    try{
-        await deleteTodo(id)
-    }catch{
-        error.value = 'Failed to Delete'
-    }
-}
-const completedTodos = computed(()=>{
-    return todos.filter(todo=> todo.completed).length
 })
 </script>
 
@@ -83,7 +27,7 @@ const completedTodos = computed(()=>{
 <template>
     <div class="card">
         <div class="card-body">
-            <h1 class="card-title d-flex justify-content-between align-items-center">
+            <h1 lass="list-group-item d-flex justify-content-between align-items-center">
                 Todos From Api
                 <button @click="loadTodos" class="btn btn-success btn-sm">Refresh</button>
             </h1>
@@ -108,7 +52,7 @@ const completedTodos = computed(()=>{
                  <div class="mb-3">
                     <input 
                     v-model="newTodoText"
-                    @keyup.enter="addTodos"
+                    @keyup.enter="addTodo"
                     :disabled="loading"
                     class="form-control"
                     placeholder="New todo..."
@@ -118,7 +62,7 @@ const completedTodos = computed(()=>{
                  <!-- List -->
                   <ul class="list-group">
                     <li
-                    v-for="todo in todos"
+                    v-for="todo in store.todos"
                     :key="todo.id"
                     class="list-group-item d-flex justify-content-btween align-ittems-center"
                     :class="{'text-decoration-line-through text-muted': todo.completed}"
@@ -137,7 +81,7 @@ const completedTodos = computed(()=>{
 
                             </button>
                             <button class="btn btn-sm btn-danger"
-                            :disabled="loading"
+                            :disabled="store.loading"
                             @click="remove(todo.id)"
                             >
                                 Delete
@@ -150,7 +94,7 @@ const completedTodos = computed(()=>{
                   <!-- Summary -->
 
                   <div class="alert alert-info mt-3">
-                    <strong>{{ completedTodos }} of <strong>{{ todos.length }}</strong> completed</strong>
+                    <strong>{{ completedCount }} of <strong>{{ store.todos.length }}</strong> completed</strong>
                   </div>
              </div>
             
